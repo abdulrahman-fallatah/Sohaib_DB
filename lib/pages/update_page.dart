@@ -12,7 +12,7 @@ class UpdatePage extends StatefulWidget{
   State<UpdatePage> createState () => _UpdatePage();
 }
 
-class _UpdatePage extends State<UpdatePage>{
+class _UpdatePage extends State<UpdatePage> {    
   final _formKey = GlobalKey<FormState>();
   final StudentDao studentDao = StudentDao(DatabaseManager.db);
   final ClassDao classDao = ClassDao(DatabaseManager.db);
@@ -23,6 +23,8 @@ class _UpdatePage extends State<UpdatePage>{
     final List<ClassRoom> classroomList = classDao.getAllClasses();
     String? name;
     String? className;
+    late String? thisClass;
+    final List<Student> studentList = studentDao.getAllStudents();
 
     return Scaffold(
       appBar: AppBar(title: Text("تعديل معلومات طالب")),
@@ -91,19 +93,29 @@ class _UpdatePage extends State<UpdatePage>{
                   DropdownMenuEntry(value: null, label: "إلغاء")
                 ],                
                 onSaved: (val){
-                  className = val;                  
+                        className = val;
                 },
                 ),
                 SizedBox(height: 15),
 
                 FilledButton(
                   child: Text("تأكيد"),
-                  onPressed: (){
+                      onPressed: () {                                                
                     if(_formKey.currentState!.validate()){
                       _formKey.currentState!.save();
                     }
 
+                        thisClass = className ?? student.assignedClass;                       
+
                     try{
+
+                          for (final s in studentList) {
+                            if (s.fullName == name &&
+                                s.assignedClass == thisClass) {
+                              throw "هذا الطالب موجود بالفعل، جرب تغيير الاسم أو الفصل";
+                            }
+                          }
+
                       if(name != null){
                         studentDao.updateStudentName(student.studentID.toString(), name);
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("تم تعديل اسم الطالب بنجاح")));
