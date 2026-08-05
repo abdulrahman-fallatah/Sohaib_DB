@@ -23,7 +23,7 @@ class _UpdatePage extends State<UpdatePage> {
     final List<ClassRoom> classroomList = classDao.getAllClasses();
     String? name;
     String? className;
-    late String? thisClass;
+    late String? confirmClass;
     final List<Student> studentList = studentDao.getAllStudents();
 
     return Scaffold(
@@ -105,13 +105,13 @@ class _UpdatePage extends State<UpdatePage> {
                       _formKey.currentState!.save();
                     }
 
-                        thisClass = className ?? student.assignedClass;                       
+                        confirmClass = className ?? student.assignedClass;                       
 
                     try{
 
                           for (final s in studentList) {
                             if (s.fullName == name &&
-                                s.assignedClass == thisClass) {
+                                s.assignedClass == confirmClass) {
                               throw "هذا الطالب موجود بالفعل، جرب تغيير الاسم أو الفصل";
                             }
                           }
