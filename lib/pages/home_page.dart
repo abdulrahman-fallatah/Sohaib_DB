@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:sohaib_db/daos/daos.dart';
@@ -17,271 +18,365 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {  
+class _HomePageState extends State<HomePage> {
   final _addstudentKey = GlobalKey<FormState>();
   final _addclassKey = GlobalKey<FormState>();
   String? name;
   String? className;
+  List<Student> studentList = [];
+  List<ClassRoom> classroomList = [];
+
+  @override
+  void initState() {
+    super.initState();
+    studentList = widget.studentDao.getAllStudents();
+    classroomList = widget.classDao.getAllClasses();
+    if (classroomList.isEmpty) {
+      DatabaseManager().initClasses();
+      classroomList = widget.classDao.getAllClasses();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final studentDao = widget.studentDao;
     final classDao = widget.classDao;
-    List<Student> studentList = studentDao.getAllStudents();
-    List<ClassRoom> classroomList = classDao.getAllClasses();
-    List<Student> selectedStudents = [];
 
-    return Scaffold(      
+    return Scaffold(
+      
       appBar: AppBar(
         title: Row(
           mainAxisAlignment: .center,
-          children: [
-            Text('x ', style: TextStyle(fontFamily: 'kfgqpc')),
+          children: [            
             Text("قاعدة بيانات مركز صهيب الرومي"),
+            Text(' x', style: TextStyle(fontFamily: 'kfgqpc')),            
           ],
-        ),       
+        ),
+        
       ),
-      body: ListView(
+      body: Platform.isWindows
+          ? _buildDesktopLayout(
+              studentDao,
+              classDao,
+              studentList,
+              classroomList,
+            )
+          : _buildAndroidLayout(
+              studentDao,
+              classDao,
+              studentList,
+              classroomList,
+            ),
+    );
+  }
+
+  Padding _buildDesktopLayout(
+    StudentDao studentDao,
+    ClassDao classDao,
+    List<Student> studentList,
+    List<ClassRoom> classroomList,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: GridView(
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 300,
+          mainAxisSpacing: 15,
+          crossAxisSpacing: 15,
+          childAspectRatio: 2,
+        ),
+        children: [
+          _addStudentButton(studentDao, classroomList),
+          _addClassButton(classDao),
+          _showStudentsButton(studentDao),
+          _recordAttendanceButton(studentDao, classDao, studentList),
+          _updateStudentButton(studentDao, classroomList),
+          _deleteStudentButton(studentDao, classroomList),
+        ],
+      ),
+    );
+  }
+
+  Padding _buildAndroidLayout(
+    StudentDao studentDao,
+    ClassDao classDao,
+    List<Student> studentList,
+    List<ClassRoom> classroomList,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.all(10),
+      child: ListView(
         children: [
           SizedBox(height: 50),
+      
+          _addStudentButton(studentDao, classroomList),
+          SizedBox(height: 50),
 
-          MaterialButton(
-            color: Colors.amber,
-            child: Column(
-              children: [
-                Icon(Icons.person_add_alt_outlined),
-                Text("إضافة طالب"),
-              ],
-            ),
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                builder: (BuildContext context) {
-                  return Padding(
-                    padding: EdgeInsets.only(
-                      top: 15,
-                      left: 15,
-                      right: 15,
-                      bottom: MediaQuery.of(context).viewInsets.bottom + 15,
-                    ),
-                    child: Directionality(
-                      textDirection: .rtl,
-                      child: SafeArea(
-                        child: Form(
-                          key: _addstudentKey,
-                          child: Column(
-                            mainAxisSize: .min,
-                            children: [
-                              TextFormField(
-                                textDirection: .rtl,
-                                textInputAction: .next,
-                                decoration: InputDecoration(
-                                  label: Text('اسم الطالب'),
-                                  hint: Text("الاسم"),
-                                ),
-                                validator: (val) {
-                                  if (val!.isEmpty) return "الحقل فارغ";
-                                  if (!Validators().onlyLetters(val)) {
-                                    return "اسم الطالب يجب أن يحتوي على حروف عربية فقط";
-                                  }
-                                  return null;
-                                },
-                                onSaved: (val) {
-                                  name = val!.trim();
-                                },
-                              ),
-                              const SizedBox(height: 10),
+          _addClassButton(classDao),
+          SizedBox(height: 50),
 
-                              DropdownMenu(
-                                label: Text("الفصل"),
-                                dropdownMenuEntries: [
-                                  ...List.generate(classroomList.length, (i) {
-                                    return DropdownMenuEntry(
-                                      value: classroomList[i].className,
-                                      label: "${classroomList[i].className}",
-                                    );
-                                  }),
-                                ],
-                                onSelected: (val) {
-                                  className = val;
-                                },
-                              ),
-                              const SizedBox(height: 20),
+          _showStudentsButton(studentDao),
+          SizedBox(height: 50),
 
-                              FilledButton(
-                                child: Text("تأكيد"),
-                                onPressed: () {
-                                  if (_addstudentKey.currentState!.validate()) {
-                                    _addstudentKey.currentState!.save();
-                                    try {
-                                      studentDao.addStudentWithClass(
-                                        name!,
-                                        className!,
-                                      );
-                                      Navigator.of(context).pop();
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            "تم إضافة الطالب بنجاح",
-                                            textDirection: .rtl,
-                                          ),
-                                        ),
-                                      );
-                                    } catch (e) {
-                                      _errorOccurred(context, e, "إضافة الطالب");
-                                    }
-                                  }
-                                },
-                              ),
-                            ],
-                          ),
+          _recordAttendanceButton(studentDao, classDao, studentList),
+          SizedBox(height: 50),
+
+          _updateStudentButton(studentDao, classroomList),
+          SizedBox(height: 50),
+
+          _deleteStudentButton(studentDao, classroomList),
+          SizedBox(height: 50),
+        ],
+      ),
+    );
+  }
+
+  ElevatedButton _addStudentButton(
+    StudentDao studentDao,
+    List<ClassRoom> classroomList,
+  ) {
+    return ElevatedButton(
+      child: Column(
+        mainAxisAlignment: .center,
+        children: [
+          Icon(Icons.person_add_alt_outlined, size: 30),
+          Text("إضافة طالب", style: Theme.of(context).textTheme.titleMedium),
+        ],
+      ),
+      onPressed: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          builder: (BuildContext context) {
+            return Padding(
+              padding: EdgeInsets.only(
+                top: 15,
+                left: 15,
+                right: 15,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 15,
+              ),
+              child: SafeArea(
+                child: Form(
+                  key: _addstudentKey,
+                  child: Column(
+                    mainAxisSize: .min,
+                    children: [
+                      TextFormField(                        
+                        textInputAction: .next,
+                        decoration: InputDecoration(
+                          label: Text('اسم الطالب'),
+                          hint: Text("الاسم"),
                         ),
+                        validator: (val) {
+                          if (val!.isEmpty) return "الحقل فارغ";
+                          if (!Validators().onlyLetters(val)) {
+                            return "اسم الطالب يجب أن يحتوي على حروف عربية فقط";
+                          }
+                          return null;
+                        },
+                        onSaved: (val) {
+                          name = val!.trim();
+                        },
                       ),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-          SizedBox(height: 50),
+                      const SizedBox(height: 10),
 
-          MaterialButton(
-            color: Colors.amber,
-            child: Column(
-              children: [Icon(Icons.class_outlined), Text("إضافة فصل")],
-            ),
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                builder: (BuildContext context) {
-                  return Padding(
-                    padding: EdgeInsets.only(
-                      top: 15,
-                      left: 15,
-                      right: 15,
-                      bottom: MediaQuery.of(context).viewInsets.bottom + 15,
-                    ),
-                    child: Directionality(
-                      textDirection: .rtl,
-                      child: SafeArea(
-                        child: Form(
-                          key: _addclassKey,
-                          child: Column(
-                            mainAxisSize: .min,
-                            children: [
-                              TextFormField(
-                                textDirection: .rtl,
-                                decoration: InputDecoration(
-                                  label: Text('عنوان الفصل'),
-                                  hint: Text("الفصل"),
+                      DropdownMenu(
+                        label: Text("الفصل"),
+                        dropdownMenuEntries: [
+                          ...List.generate(classroomList.length, (i) {
+                            return DropdownMenuEntry(
+                              value: classroomList[i].className,
+                              label: "${classroomList[i].className}",
+                            );
+                          }),
+                        ],
+                        onSelected: (val) {
+                          className = val;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+
+                      FilledButton(
+                        child: Text("تأكيد"),
+                        onPressed: () {
+                          if (_addstudentKey.currentState!.validate()) {
+                            _addstudentKey.currentState!.save();
+                            try {
+                              studentDao.addStudentWithClass(name!, className!);
+                              _refreshStudents();
+                              Navigator.of(context).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text("تم إضافة الطالب بنجاح"),
                                 ),
-                                textInputAction: .done,
-                                validator: (val) {
-                                  if (val!.isEmpty) return "الحقل فارغ";
-                                  return null;
-                                },
-                                onSaved: (val) {
-                                  className = Validators()
-                                      .convertToEasternArabicNumbers(
-                                        val!.trim(),
-                                      );
-                                },
-                                onFieldSubmitted: (val) {
-                                  if (_addclassKey.currentState!.validate()) {
-                                    _addclassKey.currentState!.save();
-                                    try {
-                                      classDao.addClass(val.trim());
-                                      Navigator.of(context).pop();
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            "تم إضافة الفصل بنجاح",
-                                            textDirection: .rtl,
-                                          ),
-                                        ),
-                                      );
-                                    } catch (e) {
-                                      _errorOccurred(context, e, "إضافة الفصل");
-                                    }
-                                  }
-                                },
-                              ),
-                              const SizedBox(height: 20),
-                              FilledButton(
-                                child: Text("تأكيد"),
-                                onPressed: () {
-                                  if (_addclassKey.currentState!.validate()) {
-                                    _addclassKey.currentState!.save();
-                                    try {
-                                      classDao.addClass(className!);
-                                      Navigator.of(context).pop();
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            "تم إضافة الفصل بنجاح",
-                                            textDirection: .rtl,
-                                          ),
-                                        ),
-                                      );
-                                    } catch (e) {
-                                      _errorOccurred(context, e, "إضافة الفصل");
-                                    }
-                                  }
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
+                              );
+                            } catch (e) {
+                              _errorOccurred(context, e, "إضافة الطالب");
+                            }
+                          }
+                        },
                       ),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-          SizedBox(height: 50),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
-          MaterialButton(
-            color: Colors.amber,
-            child: Column(
-              children: [Icon(Icons.people_outline), Text("عرض الطلاب")],
-            ),
-            onPressed: () {
-              studentList = studentDao.getAllStudents();
-              Navigator.of(context).push(MaterialPageRoute(builder: (context) => DisplayPage(studentList: studentList,),));
-            },
-          ),
-          SizedBox(height: 50),
+  ElevatedButton _addClassButton(ClassDao classDao) {
+    return ElevatedButton(
+      child: Column(
+        mainAxisAlignment: .center,
+        children: [
+          Icon(Icons.class_outlined, size: 30),
+          Text("إضافة فصل", style: Theme.of(context).textTheme.titleMedium),
+        ],
+      ),
+      onPressed: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          builder: (BuildContext context) {
+            return Padding(
+              padding: EdgeInsets.only(
+                top: 15,
+                left: 15,
+                right: 15,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 15,
+              ),
+              child: SafeArea(
+                child: Form(
+                  key: _addclassKey,
+                  child: Column(
+                    mainAxisSize: .min,
+                    children: [
+                      TextFormField(                        
+                        decoration: InputDecoration(
+                          label: Text('عنوان الفصل'),
+                          hint: Text("الفصل"),
+                        ),
+                        textInputAction: .done,
+                        validator: (val) {
+                          if (val!.isEmpty) return "الحقل فارغ";
+                          return null;
+                        },
+                        onSaved: (val) {
+                          className = Validators()
+                              .convertToEasternArabicNumbers(val!.trim());
+                        },
+                        onFieldSubmitted: (val) {
+                          if (_addclassKey.currentState!.validate()) {
+                            _addclassKey.currentState!.save();
+                            try {
+                              classDao.addClass(val.trim());
+                              _refreshClasses();
+                              Navigator.of(context).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text("تم إضافة الفصل بنجاح")),
+                              );
+                            } catch (e) {
+                              _errorOccurred(context, e, "إضافة الفصل");
+                            }
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      FilledButton(
+                        child: Text("تأكيد"),
+                        onPressed: () {
+                          if (_addclassKey.currentState!.validate()) {
+                            _addclassKey.currentState!.save();
+                            try {
+                              classDao.addClass(className!);
+                              Navigator.of(context).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text("تم إضافة الفصل بنجاح")),
+                              );
+                            } catch (e) {
+                              _errorOccurred(context, e, "إضافة الفصل");
+                            }
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
-          MaterialButton(
-            color: Colors.amber,
+  ElevatedButton _showStudentsButton(StudentDao studentDao) {
+    return ElevatedButton(
+      child: Column(
+        mainAxisAlignment: .center,
+        children: [
+          Icon(Icons.people_outline, size: 30),
+          Text("عرض الطلاب", style: Theme.of(context).textTheme.titleMedium),
+        ],
+      ),
+      onPressed: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) =>
+                DisplayPage(studentList: studentDao.getAllStudents()),
+          ),
+        );
+      },
+    );
+  }
+
+  ElevatedButton _recordAttendanceButton(
+    StudentDao studentDao,
+    ClassDao classDao,
+    List<Student> studentList,
+  ) {
+    return ElevatedButton(
+      child: Column(
+        mainAxisAlignment: .center,
+        children: [
+          Icon(Icons.person_search_outlined, size: 30),
+          Text("تحضير الطلاب", style: Theme.of(context).textTheme.titleMedium),
+        ],
+      ),
+      onPressed: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: ((context) => AttendancePage1(
+              classroomList: classDao.getAllClasses(),
+              studentList: studentList,
+              studentDao: studentDao,
+            )),
+          ),
+        );
+      },
+    );
+  }
+
+  ElevatedButton _updateStudentButton(
+    StudentDao studentDao,
+    List<ClassRoom> classroomList,
+  ) {
+    List<Student> studentList = [];
+    List<Student> selectedStudents = [];
+    return ElevatedButton(            
             child: Column(
+        mainAxisAlignment: .center,
               children: [
-                Icon(Icons.person_search_outlined),
-                Text("تحضير الطلاب"),
-              ],
-            ),
-            onPressed: () {
-              classroomList = classDao.getAllClasses();
-              Navigator.of(context).push(MaterialPageRoute(builder: ((context) => AttendancePage1(classroomList: classroomList, studentList: studentList, studentDao: studentDao))));
-            },
+          Icon(Icons.edit_outlined, size: 30),
+          Text(
+            "تعديل معلومات طالب",
+            style: Theme.of(context).textTheme.titleMedium,
           ),
-          SizedBox(height: 50),
-
-          MaterialButton(
-            color: Colors.amber,
-            child: Column(
-              children: [
-                Icon(Icons.edit_outlined),
-                Text("تعديل معلومات طالب"),
               ],
             ),
             onPressed: () {
@@ -290,170 +385,176 @@ class _HomePageState extends State<HomePage> {
                 isScrollControlled: true,
                 builder: (BuildContext context) {
                   return StatefulBuilder(builder: (context, setModalState){
-                    return Padding(
-                    padding: EdgeInsets.only(
-                      top: 15,
-                      left: 15,
-                      right: 15,
-                      bottom: MediaQuery.of(context).viewInsets.bottom + 15,
-                    ),
-                    child: Directionality(
-                      textDirection: .rtl,
-                      child: SafeArea(
-                        child: Column(                          
-                          mainAxisSize: .min,
-                          children: [
-                             DropdownMenu(
-                              label: Text("الفصل"),
-                              dropdownMenuEntries: [
-                                DropdownMenuEntry(
-                                  value: "All",
-                                  label: "جميع الفصول",
-                                ),
-                                ...List.generate(classroomList.length, (i) {
-                                  return DropdownMenuEntry(
-                                    value: classroomList[i].className,
-                                    label: "${classroomList[i].className}",
-                                  );
-                                }),
-                              ],
-                              onSelected: (val) {
-                                setModalState(() {
-                                  if (val == "All") {
-                                    studentList = studentDao.getAllStudents();
-                                  } else {
-                                    studentList = studentDao.getStudentsByClass(
-                                      val!,
-                                    );
-                                  }
-                                },);
-                              },
+                return Padding(
+                  padding: EdgeInsets.only(
+                    top: 15,
+                    left: 15,
+                    right: 15,
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 15,
+                  ),
+                  child: SafeArea(
+                    child: Column(
+                      mainAxisSize: .min,
+                      children: [
+                        DropdownMenu(
+                          label: Text("الفصل"),
+                          dropdownMenuEntries: [
+                            DropdownMenuEntry(
+                              value: "All",
+                              label: "جميع الفصول",
                             ),
-                            SizedBox(height: 10,),
-
-                            DropdownMenu(
-                              label: Text("الطالب"),
-                              dropdownMenuEntries: [
-                                ...List.generate(studentList.length, (i){
-                                  return DropdownMenuEntry(
-                                    value: studentList[i],
-                                    label: studentList[i].fullName);
-                                }),
-                              ],
-                              onSelected: (val){
-                                setModalState((){
-                                  selectedStudents.clear();
-                                  selectedStudents.add(val!);
-                                });
-                              },
-                            ),
-                            SizedBox(height: 15),
-
-                            FilledButton(
-                              child: Text("تأكيد"),
-                              onPressed: () {
-                                Navigator.of(context).push(MaterialPageRoute(builder: (context) => UpdatePage(student: selectedStudents.first),));
-                              },
-                            ),
+                            ...List.generate(classroomList.length, (i) {
+                              return DropdownMenuEntry(
+                                value: classroomList[i].className,
+                                label: "${classroomList[i].className}",
+                              );
+                            }),
                           ],
+                          onSelected: (val) {
+                            setModalState(() {
+                              if (val == "All") {
+                                studentList = studentDao.getAllStudents();
+                              } else {
+                                studentList = studentDao.getStudentsByClass(
+                                  val!,
+                                );
+                              }
+                            });
+                          },
                         ),
+                        SizedBox(height: 10),
+
+                        DropdownMenu(
+                          label: Text("الطالب"),
+                          dropdownMenuEntries: [
+                            ...List.generate(studentList.length, (i) {
+                              return DropdownMenuEntry(
+                                value: studentList[i],
+                                label: studentList[i].fullName,
+                              );
+                            }),
+                          ],
+                          onSelected: (val) {
+                            setModalState(() {
+                              selectedStudents.clear();
+                              selectedStudents.add(val!);
+                            });
+                          },
+                        ),
+                        SizedBox(height: 15),
+
+                        FilledButton(
+                          child: Text("تأكيد"),
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    UpdatePage(student: selectedStudents.first),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                       ),
                     ),
-                  );
+                );
                   });
-                },
-              );
-            },
-          ),
-          SizedBox(height: 50),
+          },
+        );
+      },
+    );
+  }
 
-          MaterialButton(
-            color: Colors.amber,
-            child: Column(
-              children: [Icon(Icons.person_remove_outlined), Text("حذف طالب")],
-            ),
-            onPressed: () {
-              selectedStudents.clear();
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                builder: (BuildContext context) {
-                  return StatefulBuilder(
-                    builder: (context, setModalState) {
-                      return Padding(
-                      padding: EdgeInsets.only(
-                        top: 15,
-                        left: 15,
-                        right: 15,
-                        bottom: MediaQuery.of(context).viewInsets.bottom + 15,
-                      ),
-                      child: Directionality(
-                        textDirection: .rtl,
-                        child: SafeArea(
-                          child: Column(
-                            mainAxisSize: .min,
-                            children: [
-                              DropdownMenu(
-                                label: Text("الفصل"),
-                                dropdownMenuEntries: [
-                                  DropdownMenuEntry(
-                                    value: "All",
-                                    label: "جميع الفصول",
-                                  ),
-                                  ...List.generate(classroomList.length, (i) {
-                                    return DropdownMenuEntry(
-                                      value: classroomList[i].className,
-                                      label: "${classroomList[i].className}",
-                                    );
-                                  }),
-                                ],
-                                onSelected: (val) {
-                                  if (val == "All") {
-                                    studentList = studentDao.getAllStudents();
-                                  } else {
-                                    studentList = studentDao.getStudentsByClass(
-                                      val!,
-                                    );
-                                  }
-                                },
+  ElevatedButton _deleteStudentButton(
+    StudentDao studentDao,
+    List<ClassRoom> classroomList,
+  ) {
+    List<Student> studentList = [];
+    List<Student> selectedStudents = [];
+    return ElevatedButton(
+      child: Column(
+        mainAxisAlignment: .center,
+        children: [
+          Icon(Icons.person_remove_outlined, size: 30),
+          Text("حذف طالب", style: Theme.of(context).textTheme.titleMedium),
+        ],
+      ),
+      onPressed: () {        
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          builder: (BuildContext context) {
+            return StatefulBuilder(
+              builder: (context, setModalState) {
+                return Padding(
+                  padding: EdgeInsets.only(
+                    top: 15,
+                    left: 15,
+                    right: 15,
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 15,
+                  ),
+                  child: SafeArea(
+                    child: Column(
+                      mainAxisSize: .min,
+                      children: [
+                        DropdownMenu(
+                          label: Text("الفصل"),
+                          dropdownMenuEntries: [
+                            DropdownMenuEntry(
+                              value: "All",
+                              label: "جميع الفصول",
+                            ),
+                            ...List.generate(classroomList.length, (i) {
+                              return DropdownMenuEntry(
+                                value: classroomList[i].className,
+                                label: "${classroomList[i].className}",
+                              );
+                            }),
+                          ],
+                          onSelected: (val) {
+                            if (val == "All") {
+                              studentList = studentDao.getAllStudents();
+                            } else {
+                              studentList = studentDao.getStudentsByClass(val!);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 10),
+
+                        DropdownSearch<Student>.multiSelection(
+                          compareFn: (i1, i2) => i1 == i2,
+                          itemAsString: (item) {
+                            return "${item.assignedClass}\t${item.fullName}";
+                          },
+                          items: (filter, infiniteScrollProps) => studentList,
+                          decoratorProps: DropDownDecoratorProps(
+                            decoration: InputDecoration(
+                              labelText: 'اختر الطالب/الطلاب المراد حذفهم',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          popupProps: MultiSelectionPopupProps.dialog(
+                            showSearchBox: true,
+                            searchFieldProps: TextFieldProps(                              
+                              decoration: InputDecoration(
+                                hintText: "ابحث عن اسم الطالب",
                               ),
-                              const SizedBox(height: 10),
-                    
-                              DropdownSearch<Student>.multiSelection(
-                                compareFn: (i1, i2) => i1 == i2,
-                                itemAsString: (item) {
-                                  return "${item.assignedClass}\t${item.fullName}";
-                                },
-                                items: (filter, infiniteScrollProps) =>
-                                    studentList,
-                                decoratorProps: DropDownDecoratorProps(
-                                  decoration: InputDecoration(
-                                    labelText: 'اختر الطالب/الطلاب المراد حذفهم',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                ),
-                                popupProps: MultiSelectionPopupProps.dialog(
-                                  showSearchBox: true,
-                                  searchFieldProps: TextFieldProps(
-                                    textDirection: .rtl,
-                                    decoration: InputDecoration(
-                                      hintText: "ابحث عن اسم الطالب",
-                                      hintTextDirection: .rtl,
-                                    ),
-                                  ),
-                                ),
-                    
-                                onSelected: (val) {
-                                  setModalState((){
-                                    selectedStudents.clear();
-                                    selectedStudents = val;
-                                  });
-                                },
-                              ),
-                              const SizedBox(height: 20),
-                    
-                              FilledButton(
-                                onPressed: selectedStudents.isEmpty ? null : () async {                                
+                            ),
+                          ),
+
+                          onSelected: (val) {
+                            setModalState(() {
+                              selectedStudents.clear();
+                              selectedStudents = val;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 20),
+
+                        FilledButton(
+                          onPressed: selectedStudents.isEmpty
+                              ? null
+                              : () async {
                                   bool? confirm = await showDialog<bool>(
                                     barrierDismissible: false,
                                     context: context,
@@ -462,11 +563,9 @@ class _HomePageState extends State<HomePage> {
                                         title: Text(
                                           "تنبيه!",
                                           style: TextStyle(color: Colors.red),
-                                          textDirection: .rtl,
                                         ),
                                         content: Text(
-                                          "سيتم حذف ${selectedStudents.length < 2 ? 'الطالب' : 'الطلاب'} من قاعدة البيانات:\n ${selectedStudents.map((e) => e.fullName + e.assignedClass)},\nهل أنت متأكد؟",
-                                          textDirection: .rtl,
+                                          "سيتم حذف ${selectedStudents.length < 2 ? 'الطالب' : 'الطلاب'} من قاعدة البيانات:\n ${selectedStudents.map((e) => "${e.fullName} ${e.assignedClass}")},\nهل أنت متأكد؟",
                                         ),
                                         actions: [
                                           Row(
@@ -495,10 +594,13 @@ class _HomePageState extends State<HomePage> {
                                       );
                                     },
                                   );
-                    
+                
                                   if (confirm == true) {
                                     try {
-                                      studentDao.deleteStudent(selectedStudents);
+                                      studentDao.deleteStudent(
+                                        selectedStudents,
+                                      );
+                                      _refreshStudents();
                                       if (context.mounted) {
                                         Navigator.of(context).pop();
                                         setState(() {});
@@ -508,34 +610,32 @@ class _HomePageState extends State<HomePage> {
                                           SnackBar(
                                             content: Text(
                                               "تم حذف ${selectedStudents.length < 2 ? 'الطالب' : 'الطلاب'} بنجاح",
-                                              textDirection: .rtl,
                                             ),
                                           ),
                                         );
                                       }
                                     } catch (e) {
                                       if (context.mounted) {
-                                        _errorOccurred(context, e, "حذف ${selectedStudents.length < 2 ? 'الطالب' : 'الطلاب'}");                                        
+                                        _errorOccurred(
+                                          context,
+                                          e,
+                                          "حذف ${selectedStudents.length < 2 ? 'الطالب' : 'الطلاب'}",
+                                        );
                                       }
                                     }
                                   }
                                 },
-                                child: Text("تأكيد"),
-                              ),
-                            ],
-                          ),
+                          child: Text("تأكيد"),
+                        ),
+                      ],
                         ),
                       ),
                     );
-                    },                    
-                  );
-                },
-              );
-            },
-          ),
-          SizedBox(height: 50),
-        ],
-      ),
+              },
+            );
+          },
+        );
+      },
     );
   }
 
@@ -544,14 +644,8 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(
-            "حدث خطأ أثناء $text",
-            textDirection: .rtl,
-          ),
-          content: Text(
-            "تفاصيل الخطأ:\n$e",
-            textDirection: .rtl,
-          ),
+          title: Text("حدث خطأ أثناء $text"),
+          content: Text("تفاصيل الخطأ:\n$e"),
           actions: [
             Center(
               child: FilledButton(
@@ -565,5 +659,17 @@ class _HomePageState extends State<HomePage> {
         );
       },
     );
+  }
+
+  void _refreshStudents() {
+    setState(() {
+      studentList = widget.studentDao.getAllStudents();
+    });
+  }
+
+  void _refreshClasses() {
+    setState(() {
+      classroomList = widget.classDao.getAllClasses();
+    });
   }
 }

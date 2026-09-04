@@ -6,17 +6,27 @@ export 'class_dao.dart';
 
 class DatabaseManager {
 
-  static late final Database db;  
+  static late final Database db;
 
   Future<void> initDatabase() async {
-
-    final docDir = await getApplicationDocumentsDirectory();
-    final dbLocation = p.join(docDir.path, "sohaib_database.db");
-    db = sqlite3.open(dbLocation);    
     
+    final docDir = await getApplicationSupportDirectory();
+    final dbLocation = p.join(docDir.path, "sohaib_database.db");
+    db = sqlite3.open(dbLocation);
 
     _createTables(db);
+  }
 
+  void initClasses() {
+    List temp = ["ت/أ", "ت/ب", "١/أ", "١/ب", "٢/أ", "٢/ب", "٣", "٤"];
+    for (int i = 0; i < temp.length; i++) {
+      db.execute(
+        '''
+      INSERT INTO Classes (class_name) VALUES (?);
+      ''',
+        [temp[i]],
+      );
+    }
   }
   
   void _createTables(Database db){
@@ -36,7 +46,7 @@ class DatabaseManager {
     "class_id"	INTEGER NOT NULL UNIQUE,
     "class_name"	TEXT NOT NULL UNIQUE,
     PRIMARY KEY("class_id" AUTOINCREMENT)
-    );
+    );    
     ''');
 
     db.execute('''CREATE TABLE IF NOT EXISTS "S_C" (

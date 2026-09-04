@@ -95,7 +95,7 @@ BEGIN
             VALUE "InternalName", "sohaib_db" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
             VALUE "OriginalFilename", "sohaib_db.exe" "\0"
-            VALUE "ProductName", "sohaib_db" "\0"
+            VALUE "ProductName", "قاعدة مركز صهيب" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

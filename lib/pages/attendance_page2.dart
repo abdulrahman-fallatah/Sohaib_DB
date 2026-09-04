@@ -2,18 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:sohaib_db/dart/objects.dart';
 import 'package:sohaib_db/daos/daos.dart';
 import 'package:sohaib_db/dart/validators.dart';
-import 'package:hijri_date/hijri.dart';
 
 class AttendancePage2 extends StatefulWidget {
   final StudentDao studentDao;
   final ClassRoom classRoom;
   final List<Student> studentList;
+  final String selectedDate;
 
   const AttendancePage2({
     super.key,
     required this.studentDao,
     required this.classRoom,
-    required this.studentList
+    required this.studentList,
+    required this.selectedDate,
     });
 
   @override
@@ -22,20 +23,24 @@ class AttendancePage2 extends StatefulWidget {
 
 class _AttendancePage2State extends State<AttendancePage2> {  
   late List<Student> studentList;  
-  Map<Student, bool?> attendance = {};  
-  late String today;
+  Map<Student, bool?> attendance = {};
   late bool isDone;  
 
 
   @override
   void initState(){
-    super.initState();
+    super.initState();    
 
-    today = HijriDate.now().toFormat('DDDD dd/MMMM/yyyy').toString();
+    isDone = widget.studentDao.isAttendanceTaken(
+      widget.classRoom.className!,
+      widget.selectedDate,
+    );
 
-    isDone = widget.studentDao.isAttendanceTaken(widget.classRoom.className!, today);
-
-    final Map<int, bool> savedAttendance = widget.studentDao.getTodayAttendanceByClass(widget.classRoom.className!, today);    
+    final Map<int, bool> savedAttendance = widget.studentDao
+        .getTodayAttendanceByClass(
+          widget.classRoom.className!,
+          widget.selectedDate,
+        );    
     
     studentList = widget.studentDao.getStudentsByClass(widget.classRoom.className!);
     attendance.clear();
@@ -48,9 +53,10 @@ class _AttendancePage2State extends State<AttendancePage2> {
   Widget build(BuildContext context) {
     StudentDao studentDao = widget.studentDao;
     ClassRoom classRoom = widget.classRoom;
+    String selectedDate = widget.selectedDate;
     
     return Scaffold(
-      appBar: AppBar(title: Text("${classRoom.className}"),),
+      appBar: AppBar(title: Text("${classRoom.className}  - ${selectedDate}")),
 
       floatingActionButton: FloatingActionButton.extended(
         icon: Icon(Icons.save_outlined),
@@ -84,9 +90,9 @@ class _AttendancePage2State extends State<AttendancePage2> {
 
           try{
             if(isDone){
-              studentDao.updateAttendance(validAttendance, today);
+              studentDao.updateAttendance(validAttendance, selectedDate);
             }else{
-              studentDao.recordAttendance(validAttendance, today);
+              studentDao.recordAttendance(validAttendance, selectedDate);
             }            
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("تم تحضير الطلاب بنجاح")));
             Navigator.of(context).pop();
