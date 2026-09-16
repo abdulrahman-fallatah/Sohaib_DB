@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:sohaib_db/daos/daos.dart';
 import 'package:sohaib_db/dart/objects.dart';
 import 'package:sohaib_db/dart/validators.dart';
+import 'package:sohaib_db/pages/add_students.dart';
 import 'package:sohaib_db/pages/update_page.dart';
 import 'attendance_page1.dart';
 import 'display_page.dart';
@@ -43,17 +44,45 @@ class _HomePageState extends State<HomePage> {
     final classDao = widget.classDao;
 
     return Scaffold(
-      
       appBar: AppBar(
         title: Row(
           mainAxisAlignment: .center,
-          children: [            
+          children: [
             Text("قاعدة بيانات مركز صهيب الرومي"),
-            Text(' x', style: TextStyle(fontFamily: 'kfgqpc')),            
+            Text(' x', style: TextStyle(fontFamily: 'kfgqpc')),
           ],
         ),
-        
-      ),
+        actions: [
+          PopupMenuButton(
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                child: Text("حول البرنامج"),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AboutDialog(
+                        applicationName: "قاعدة بيانات مركز صهيب الرومي",
+                        applicationVersion: "1.1.0",
+                        applicationIcon: Image.asset(
+                          "assets/icon/sohaib_logo.png",
+                          width: 70,
+                        ),
+                        children: [
+                          Image.asset(
+                            "assets/icon/personal_logo.png",
+                            width: 50,
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+        ],
+      ),      
       body: Platform.isWindows
           ? _buildDesktopLayout(
               studentDao,
@@ -108,7 +137,7 @@ class _HomePageState extends State<HomePage> {
       child: ListView(
         children: [
           SizedBox(height: 50),
-      
+
           _addStudentButton(studentDao, classroomList),
           SizedBox(height: 50),
 
@@ -161,12 +190,13 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     mainAxisSize: .min,
                     children: [
-                      TextFormField(                        
+                      TextFormField(
                         textInputAction: .next,
                         decoration: InputDecoration(
                           label: Text('اسم الطالب'),
                           hint: Text("الاسم"),
                         ),
+                        autovalidateMode: .onUserInteraction,
                         validator: (val) {
                           if (val!.isEmpty) return "الحقل فارغ";
                           if (!Validators().onlyLetters(val)) {
@@ -180,7 +210,8 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 10),
 
-                      DropdownMenu(
+                      DropdownMenuFormField(
+                        selectOnly: true,
                         label: Text("الفصل"),
                         dropdownMenuEntries: [
                           ...List.generate(classroomList.length, (i) {
@@ -192,6 +223,11 @@ class _HomePageState extends State<HomePage> {
                         ],
                         onSelected: (val) {
                           className = val;
+                        },
+                        autovalidateMode: .onUserInteraction,
+                        validator: (val) {
+                          if (val == null) return "الحقل فارغ";
+                          return null;
                         },
                       ),
                       const SizedBox(height: 20),
@@ -205,15 +241,35 @@ class _HomePageState extends State<HomePage> {
                               studentDao.addStudentWithClass(name!, className!);
                               _refreshStudents();
                               Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text("تم إضافة الطالب بنجاح"),
-                                ),
+                              Messages().success(
+                                context,
+                                "تم إضافة الطالب بنجاح",
                               );
                             } catch (e) {
                               _errorOccurred(context, e, "إضافة الطالب");
                             }
                           }
+                        },
+                      ),
+                      SizedBox(height: 30),
+
+                      FilledButton(
+                        child: Row(
+                          mainAxisSize: .min,
+                          children: [
+                            Icon(Icons.arrow_back),
+                            Text("إضافة طلاب متعددين"),
+                          ],
+                        ),
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => AddStudents(
+                                studentDao: studentDao,
+                                classroomList: classroomList,
+                              ),
+                            ),
+                          );
                         },
                       ),
                     ],
@@ -254,7 +310,7 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     mainAxisSize: .min,
                     children: [
-                      TextFormField(                        
+                      TextFormField(
                         decoration: InputDecoration(
                           label: Text('عنوان الفصل'),
                           hint: Text("الفصل"),
@@ -275,9 +331,9 @@ class _HomePageState extends State<HomePage> {
                               classDao.addClass(val.trim());
                               _refreshClasses();
                               Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text("تم إضافة الفصل بنجاح")),
+                              Messages().success(
+                                context,
+                                "تم إضافة الفصل بنجاح",
                               );
                             } catch (e) {
                               _errorOccurred(context, e, "إضافة الفصل");
@@ -293,10 +349,11 @@ class _HomePageState extends State<HomePage> {
                             _addclassKey.currentState!.save();
                             try {
                               classDao.addClass(className!);
+                              _refreshClasses();
                               Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text("تم إضافة الفصل بنجاح")),
+                              Messages().success(
+                                context,
+                                "تم إضافة الفصل بنجاح",
                               );
                             } catch (e) {
                               _errorOccurred(context, e, "إضافة الفصل");
@@ -368,23 +425,24 @@ class _HomePageState extends State<HomePage> {
   ) {
     List<Student> studentList = [];
     List<Student> selectedStudents = [];
-    return ElevatedButton(            
-            child: Column(
+    return ElevatedButton(
+      child: Column(
         mainAxisAlignment: .center,
-              children: [
+        children: [
           Icon(Icons.edit_outlined, size: 30),
           Text(
             "تعديل معلومات طالب",
             style: Theme.of(context).textTheme.titleMedium,
           ),
-              ],
-            ),
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                builder: (BuildContext context) {
-                  return StatefulBuilder(builder: (context, setModalState){
+        ],
+      ),
+      onPressed: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          builder: (BuildContext context) {
+            return StatefulBuilder(
+              builder: (context, setModalState) {
                 return Padding(
                   padding: EdgeInsets.only(
                     top: 15,
@@ -445,20 +503,24 @@ class _HomePageState extends State<HomePage> {
 
                         FilledButton(
                           child: Text("تأكيد"),
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    UpdatePage(student: selectedStudents.first),
-                              ),
-                            );
-                          },
+                          onPressed: selectedStudents.isEmpty
+                              ? null
+                              : () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => UpdatePage(
+                                        student: selectedStudents.first,
+                                      ),
+                                    ),
+                                  );
+                                },
                         ),
                       ],
-                      ),
                     ),
+                  ),
                 );
-                  });
+              },
+            );
           },
         );
       },
@@ -479,7 +541,7 @@ class _HomePageState extends State<HomePage> {
           Text("حذف طالب", style: Theme.of(context).textTheme.titleMedium),
         ],
       ),
-      onPressed: () {        
+      onPressed: () {
         showModalBottomSheet(
           context: context,
           isScrollControlled: true,
@@ -535,7 +597,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           popupProps: MultiSelectionPopupProps.dialog(
                             showSearchBox: true,
-                            searchFieldProps: TextFieldProps(                              
+                            searchFieldProps: TextFieldProps(
                               decoration: InputDecoration(
                                 hintText: "ابحث عن اسم الطالب",
                               ),
@@ -594,7 +656,7 @@ class _HomePageState extends State<HomePage> {
                                       );
                                     },
                                   );
-                
+
                                   if (confirm == true) {
                                     try {
                                       studentDao.deleteStudent(
@@ -628,9 +690,9 @@ class _HomePageState extends State<HomePage> {
                           child: Text("تأكيد"),
                         ),
                       ],
-                        ),
-                      ),
-                    );
+                    ),
+                  ),
+                );
               },
             );
           },
