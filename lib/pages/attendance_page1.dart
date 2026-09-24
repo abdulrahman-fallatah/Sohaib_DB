@@ -7,7 +7,7 @@ import 'package:sohaib_db/dart/validators.dart';
 import 'package:sohaib_db/pages/attendance_page2.dart';
 
 class AttendancePage1 extends StatefulWidget {
-  final StudentDao studentDao;  
+  final StudentDao studentDao;
   final List<ClassRoom> classroomList;
   final List<Student> studentList;
 
@@ -15,8 +15,7 @@ class AttendancePage1 extends StatefulWidget {
     super.key,
     required this.classroomList,
     required this.studentList,
-    required this.studentDao,    
-    });
+    required this.studentDao});
 
   @override
   State<AttendancePage1> createState() => _AttendancePage1State();
@@ -24,10 +23,10 @@ class AttendancePage1 extends StatefulWidget {
 
 class _AttendancePage1State extends State<AttendancePage1> {
   DateTime _currentDate = DateTime.now();
-  late String dateString;
+  late String dateString;    
 
   @override
-  void initState() {    
+  void initState() {
     super.initState();
     _updateDateString();
   }
@@ -37,15 +36,14 @@ class _AttendancePage1State extends State<AttendancePage1> {
     dateString = hijri.toFormat('DDDD dd/MMMM/yyyy');
   }
 
-
   @override
   Widget build(BuildContext context) {
-    final StudentDao studentDao = widget.studentDao;    
+    final StudentDao studentDao = widget.studentDao;
     List<ClassRoom> classroomList = widget.classroomList;
     List<Student> studentList = widget.studentList;
 
     return Scaffold(
-      appBar: AppBar(title: Text("تحضير الطلاب"),),
+      appBar: AppBar(title: Text("تحضير الطلاب")),
       body: Column(
         children: [
           Card(
@@ -54,8 +52,7 @@ class _AttendancePage1State extends State<AttendancePage1> {
               padding: const EdgeInsets.symmetric(vertical: 4.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Next Day Button
+                children: [                  
                   IconButton(
                     icon: Icon(Icons.arrow_back_ios, size: 20),
                     onPressed: () {
@@ -64,8 +61,7 @@ class _AttendancePage1State extends State<AttendancePage1> {
                         _updateDateString();
                       });
                     },
-                  ),
-                  // Current Date Display & Picker
+                  ),                  
                   TextButton.icon(
                     icon: Icon(Icons.calendar_today),
                     label: Text(
@@ -76,7 +72,7 @@ class _AttendancePage1State extends State<AttendancePage1> {
                       var picked = await showHijriDatePicker(
                         context: context,
                         initialDate: HijriDateTime.fromGregorian(_currentDate),
-                        firstDate: HijriDateTime(1447),
+                        firstDate: HijriDateTime.fromGregorian(DateTime.now().subtract(Duration(days: 365))),
                         lastDate: HijriDateTime.fromGregorian(
                           DateTime.now().add(Duration(days: 365)),
                         ),
@@ -89,8 +85,7 @@ class _AttendancePage1State extends State<AttendancePage1> {
                         });
                       }
                     },
-                  ),
-                  // Previous Day Button
+                  ),                  
                   IconButton(
                     icon: Icon(Icons.arrow_forward_ios, size: 20),
                     onPressed: () {
@@ -108,7 +103,7 @@ class _AttendancePage1State extends State<AttendancePage1> {
             child: ListView.builder(
               itemCount: classroomList.length,
               itemBuilder: ((context, i) {
-                final className = classroomList[i].className;            
+                final className = classroomList[i].className;
                 final bool isDone = studentDao.isAttendanceTaken(
                   className!,
                   dateString,
@@ -179,10 +174,9 @@ class _AttendancePage1State extends State<AttendancePage1> {
                             );
                           },
                         );
-                    
+
                         if (confirm == true && context.mounted) {
-                          await Navigator.of(context)
-                    .push(
+                          await Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (context) => AttendancePage2(
                                 studentDao: studentDao,
@@ -196,8 +190,7 @@ class _AttendancePage1State extends State<AttendancePage1> {
                         }
                       } else {
                         if (context.mounted) {
-                          await Navigator.of(context)
-              .push(
+                          await Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (context) => AttendancePage2(
                                 studentDao: studentDao,
@@ -217,8 +210,7 @@ class _AttendancePage1State extends State<AttendancePage1> {
             ),
           ),
         ],
-      )
-
+      ),
     );
   }
 }

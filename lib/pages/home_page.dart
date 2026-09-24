@@ -5,9 +5,9 @@ import 'package:sohaib_db/daos/daos.dart';
 import 'package:sohaib_db/dart/objects.dart';
 import 'package:sohaib_db/dart/validators.dart';
 import 'package:sohaib_db/pages/add_students.dart';
+import 'package:sohaib_db/pages/display_page1.dart';
 import 'package:sohaib_db/pages/update_page.dart';
 import 'attendance_page1.dart';
-import 'display_page.dart';
 
 class HomePage extends StatefulWidget {
   final StudentDao studentDao;
@@ -32,6 +32,7 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     studentList = widget.studentDao.getAllStudents();
     classroomList = widget.classDao.getAllClasses();
+    _refreshStudents();
     if (classroomList.isEmpty) {
       DatabaseManager().initClasses();
       classroomList = widget.classDao.getAllClasses();
@@ -58,31 +59,20 @@ class _HomePageState extends State<HomePage> {
               PopupMenuItem(
                 child: Text("حول البرنامج"),
                 onTap: () {
-                  showDialog(
+                  showAboutDialog(
                     context: context,
-                    builder: (context) {
-                      return AboutDialog(
-                        applicationName: "قاعدة بيانات مركز صهيب الرومي",
-                        applicationVersion: "1.1.0",
-                        applicationIcon: Image.asset(
-                          "assets/icon/sohaib_logo.png",
-                          width: 70,
-                        ),
-                        children: [
-                          Image.asset(
-                            "assets/icon/personal_logo.png",
-                            width: 50,
-                          ),
-                        ],
-                      );
-                    },
+                    applicationName: "قاعدة بيانات مركز صهيب الرومي",
+                    applicationVersion: "1.1.0",
+                    applicationIcon: Image.asset("assets/icon/sohaib_logo.png", width: 70),
+                    children: [
+                      Image.asset("assets/icon/personal_logo.png", width: 50)],
                   );
                 },
               ),
             ],
           ),
         ],
-      ),      
+      ),
       body: Platform.isWindows
           ? _buildDesktopLayout(
               studentDao,
@@ -121,6 +111,7 @@ class _HomePageState extends State<HomePage> {
           _recordAttendanceButton(studentDao, classDao, studentList),
           _updateStudentButton(studentDao, classroomList),
           _deleteStudentButton(studentDao, classroomList),
+          _deleteClassButton(studentDao, classDao, classroomList),
         ],
       ),
     );
@@ -246,7 +237,7 @@ class _HomePageState extends State<HomePage> {
                                 "تم إضافة الطالب بنجاح",
                               );
                             } catch (e) {
-                              _errorOccurred(context, e, "إضافة الطالب");
+                              Messages().errorOccurred(context, e, "إضافة الطالب");
                             }
                           }
                         },
@@ -336,7 +327,7 @@ class _HomePageState extends State<HomePage> {
                                 "تم إضافة الفصل بنجاح",
                               );
                             } catch (e) {
-                              _errorOccurred(context, e, "إضافة الفصل");
+                              Messages().errorOccurred(context, e, "إضافة الفصل");
                             }
                           }
                         },
@@ -356,7 +347,7 @@ class _HomePageState extends State<HomePage> {
                                 "تم إضافة الفصل بنجاح",
                               );
                             } catch (e) {
-                              _errorOccurred(context, e, "إضافة الفصل");
+                              Messages().errorOccurred(context, e, "إضافة الفصل");
                             }
                           }
                         },
@@ -384,8 +375,11 @@ class _HomePageState extends State<HomePage> {
       onPressed: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) =>
-                DisplayPage(studentList: studentDao.getAllStudents()),
+            builder: (context) => DisplayPage1(
+              studentDao: studentDao,
+              classroomList: classroomList,
+              studentList: studentDao.getAllStudents(),
+            ),
           ),
         );
       },
@@ -423,8 +417,6 @@ class _HomePageState extends State<HomePage> {
     StudentDao studentDao,
     List<ClassRoom> classroomList,
   ) {
-    List<Student> studentList = [];
-    List<Student> selectedStudents = [];
     return ElevatedButton(
       child: Column(
         mainAxisAlignment: .center,
@@ -437,6 +429,8 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       onPressed: () {
+        List<Student> studentList = [];
+        List<Student> selectedStudents = [];
         showModalBottomSheet(
           context: context,
           isScrollControlled: true,
@@ -506,6 +500,7 @@ class _HomePageState extends State<HomePage> {
                           onPressed: selectedStudents.isEmpty
                               ? null
                               : () {
+                                  Navigator.of(context).pop();
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (context) => UpdatePage(
@@ -531,8 +526,6 @@ class _HomePageState extends State<HomePage> {
     StudentDao studentDao,
     List<ClassRoom> classroomList,
   ) {
-    List<Student> studentList = [];
-    List<Student> selectedStudents = [];
     return ElevatedButton(
       child: Column(
         mainAxisAlignment: .center,
@@ -542,6 +535,8 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       onPressed: () {
+        List<Student> studentList = [];
+        List<Student> selectedStudents = [];
         showModalBottomSheet(
           context: context,
           isScrollControlled: true,
@@ -678,7 +673,7 @@ class _HomePageState extends State<HomePage> {
                                       }
                                     } catch (e) {
                                       if (context.mounted) {
-                                        _errorOccurred(
+                                        Messages().errorOccurred(
                                           context,
                                           e,
                                           "حذف ${selectedStudents.length < 2 ? 'الطالب' : 'الطلاب'}",
@@ -701,23 +696,88 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _errorOccurred(BuildContext context, Object e, String text) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text("حدث خطأ أثناء $text"),
-          content: Text("تفاصيل الخطأ:\n$e"),
-          actions: [
-            Center(
-              child: FilledButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text("حسنا"),
-              ),
-            ),
-          ],
+  ElevatedButton _deleteClassButton(StudentDao studentDao, ClassDao classDao, List<ClassRoom> classroomList) {
+    return ElevatedButton(
+      child: Column(
+        mainAxisAlignment: .center,
+        children: [
+          Icon(Icons.delete_forever_outlined, size: 30),
+          Text("حذف فصل", style: Theme.of(context).textTheme.titleMedium),
+        ],
+      ),
+      onPressed: () {
+        ClassRoom? selectedClass;
+        showModalBottomSheet(
+          context: context,
+          builder: (context) {
+            return StatefulBuilder(
+              builder: (context, setModelState) {
+                return Padding(
+                  padding: EdgeInsets.only(
+                    top: 15,
+                    left: 15,
+                    right: 15,
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 15,
+                  ),
+                  child: SafeArea(
+                    child: Column(
+                      mainAxisSize: .min,
+                      children: [
+                        DropdownMenu(
+                          selectOnly: true,
+                          label: Text("الفصل"),
+                          dropdownMenuEntries: [
+                            ...List.generate(classroomList.length, (i) {
+                              return DropdownMenuEntry(value: classroomList[i], label: "${classroomList[i].className}");
+                            }),
+                          ],
+                          onSelected: (val) {
+                            setModelState(() {
+                              selectedClass = val;
+                            });
+                          },
+                        ),
+                        SizedBox(height: 20),
+
+                        FilledButton(
+                          child: Text("تأكيد"),
+                          onPressed: selectedClass == null
+                              ? null
+                              : () async {
+                                  List<Student> existStudents = studentDao.getStudentsByClass(
+                                    selectedClass!.className!,
+                                  );
+                                  if (existStudents.isNotEmpty) {
+                                    bool confirm = await Messages().confirm(
+                                      context,
+                                      "يوجد طلاب في هذا الفصل",
+                                      "سيتم حذف الطلاب المتواجدين في الفصل حاليا\nهل أنت متأكد؟",
+                                    );
+                                    if (confirm == false) return;
+                                  }
+                                  try {
+                                    classDao.deleteClass(
+                                      selectedClass!,
+                                      existStudents.isNotEmpty ? existStudents : null,
+                                    );
+                                    existStudents.isNotEmpty
+                                        ? Messages().success(context, "تم حذف الفصل مع الطلاب بنجاح")
+                                        : Messages().success(context, "تم حذف الفصل بنجاح");
+                                    Navigator.of(context).pop();
+                                  } catch (e) {
+                                    Messages().errorOccurred(context, e, "حذف الفصل");
+                                  } finally {
+                                    _refreshClasses();
+                                  }                                  
+                                },
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
         );
       },
     );

@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:sohaib_db/dart/objects.dart';
 import 'package:sohaib_db/dart/validators.dart';
 import 'package:sohaib_db/pages/details_page.dart';
 
-class DisplayPage extends StatefulWidget{
+class DisplayPage2 extends StatefulWidget {
   final List<Student> studentList;
 
-  const DisplayPage({super.key, required this.studentList});
+  const DisplayPage2({super.key, required this.studentList});
 
   @override
-  State<DisplayPage> createState() => _DisplayPageState();
+  State<DisplayPage2> createState() => _DisplayPage2State();
 }
 
-class _DisplayPageState extends State<DisplayPage>{
+class _DisplayPage2State extends State<DisplayPage2> {
   int? sortCol = 0;
   bool isAscending = true;  
   
@@ -25,7 +24,9 @@ class _DisplayPageState extends State<DisplayPage>{
 
       return Scaffold(
           appBar: AppBar(title: Text("عرض الطلاب")),
-      body: LayoutBuilder(
+      body: studentList.length == 0 ?
+      Center(child: Text("لا يوجد طلاب في هذا الفصل"),)
+      : LayoutBuilder(
         builder: (context, constraints) {
           return SingleChildScrollView(
             child: SingleChildScrollView(

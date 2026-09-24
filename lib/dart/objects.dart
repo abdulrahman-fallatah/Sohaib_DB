@@ -94,14 +94,18 @@ class Messages {
     );
   }
 
-  confirm(BuildContext context, String? title, String? content) async {
+  Future<bool> confirm(
+    BuildContext context,
+    String? title,
+    String? content,
+  ) async {
     return await showDialog<bool>(
           context: context,
           builder: (context) {
             return AlertDialog(
               title: Text(
                 title ?? 'تنبيه',
-                style: Theme.of(context).textTheme.titleMedium,
+                style: TextStyle(fontSize: 20, color: Colors.red),
               ),
               content: Text(
                 content ?? 'هل أنت متأكد',
@@ -109,8 +113,12 @@ class Messages {
               ),
               actions: [
                 Row(
+                  mainAxisAlignment: .spaceEvenly,
                   children: [
                     FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.red,
+                      ),
                       onPressed: () {
                         Navigator.of(context).pop(true);
                       },
@@ -120,7 +128,7 @@ class Messages {
                       onPressed: () {
                         Navigator.of(context).pop(false);
                       },
-                      child: Text("لا"),
+                      child: Text("إلغاء"),
                     ),
                   ],
                 ),
@@ -134,6 +142,11 @@ class Messages {
   void success(BuildContext context, String? text) {
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(text ?? "تمت العملية بنجاح")));
+    ).showSnackBar(
+      SnackBar(
+        content: Text(text ?? "تمت العملية بنجاح"),
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 }
